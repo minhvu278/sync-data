@@ -66,7 +66,6 @@ export class ClassroomsService {
       if (!token) {
         throw new Error('Failed to obtain access token');
       }
-      console.log('Access Token:', token);
     } catch (error) {
       console.error('Token refresh error:', error.response?.data || error.message);
       throw new HttpException(`Failed to refresh access token: ${error.message}`, HttpStatus.UNAUTHORIZED);
@@ -113,39 +112,28 @@ export class ClassroomsService {
 
   private async fetchClassroomData(classroom_id: string, topic_id?: string): Promise<ClassroomData> {
     try {
-      console.log(`Fetching course data for classroom_id: ${classroom_id}`);
       const courseResponse = await this.classroomClient.courses.get({ id: classroom_id });
       const course = courseResponse.data;
-      console.log(`Course data:`, course);
 
-      console.log(`Fetching students for classroom_id: ${classroom_id}`);
       const studentsResponse = await this.classroomClient.courses.students.list({ courseId: classroom_id });
       const students = studentsResponse.data.students || [];
-      console.log(`Students data:`, students);
 
-      console.log(`Fetching topics for classroom_id: ${classroom_id}`);
       let topics: GoogleTopic[] = [];
       try {
         const topicsResponse = await this.classroomClient.courses.topics.list({ courseId: classroom_id });
-        console.log(`Raw topics response for classroom ${classroom_id}:`, topicsResponse.data);
-        // Sử dụng key 'topic' thay vì 'topics' dựa trên response thực tế
         topics = (topicsResponse.data.topic || []).map(topic => ({
           topicId: topic.topicId,
           name: topic.name,
           courseId: topic.courseId,
           updateTime: topic.updateTime,
         }));
-        console.log(`Mapped topics data:`, topics);
       } catch (error) {
         console.error(`Failed to fetch topics for classroom_id ${classroom_id}:`, error.response?.data || error.message);
         topics = [];
       }
-      console.log(`Topics data:`, topics);
 
-      console.log(`Fetching coursework for classroom_id: ${classroom_id}`);
       const assignmentsResponse = await this.classroomClient.courses.courseWork.list({ courseId: classroom_id });
       let assignments = assignmentsResponse.data.courseWork || [];
-      console.log(`Assignments data:`, assignments);
 
       if (topic_id) {
         assignments = assignments.filter(a => a.topicId === topic_id);
@@ -156,14 +144,11 @@ export class ClassroomsService {
 
       const submissions: ClassroomData['submissions'] = [];
       for (const assignment of assignments) {
-        console.log(`Fetching submissions for classroom_id: ${classroom_id}, assignment_id: ${assignment.id}`);
         const submissionsResponse = await this.classroomClient.courses.courseWork.studentSubmissions.list({
           courseId: classroom_id,
           courseWorkId: assignment.id,
         });
-        console.log(`Raw submissions response for assignment ${assignment.id}:`, submissionsResponse.data);
         const assignmentSubmissions = (submissionsResponse.data.studentSubmissions || []).map(sub => {
-          console.log(`Submission history for assignment ${assignment.id}, student ${sub.userId}:`, sub.submissionHistory);
           const turnedInHistory = sub.submissionHistory?.find(
             history => history.stateHistory?.state === 'TURNED_IN'
           );
@@ -179,7 +164,6 @@ export class ClassroomsService {
           };
         });
         submissions.push(...assignmentSubmissions);
-        console.log(`Submissions data for assignment ${assignment.id}:`, assignmentSubmissions);
       }
 
       return {
@@ -261,7 +245,6 @@ export class ClassroomsService {
     await this.classroomRepository.save(classroom);
 
     for (const topic of data.topics) {
-      console.log(`Saving topic to database:`, topic);
       const topicEntity = this.topicRepository.create({
         topic_id: topic.topic_id,
         classroom_id: data.classroom_id,
